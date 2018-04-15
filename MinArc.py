@@ -28,6 +28,7 @@ class GreedyFAS:
         self.s_right = deque()
         self.s = self.s_left
         self.lowest = float("inf")
+        self.removed_nodes = set()
         self.d = []
         self.debug = debug
         self.gen_scores(weighted)
@@ -84,16 +85,18 @@ class GreedyFAS:
         for nd, _ in neighbours:
             nd = nd if parity >= 0 else _ # quick swap
 
-            if nd in self.buckets[0] or nd in self.buckets[-1]: continue # if nd sink or source skip iretration
+            if nd in self.buckets[0] or nd in self.buckets[-1] or nd in self.removed_nodes: continue # if nd sink or source skip iretration
             
             ind = mid + self.scores[nd] # bucket index for node nd
 
             x = self.buckets[ind].pop(self.buckets[ind].index(nd))
 
             self.scores[nd] += parity
+            _deg = 1 if parity >= 0 else 0
+            self.degrees[nd][_deg] -= 1 
 
             # Check if nd becomes a sink or if it moves to an adjecent bucket
-            if  self.G.in_degree(nd) > 0 and  self.G.out_degree(nd) > 0:
+            if  self.degrees[nd][_deg] > 0 and  self.degrees[nd][_deg] > 0:
                 self.buckets[self.scores[nd] + mid].append(nd)
             else:
                 self.buckets[-1 if parity > 0 else 0].append(nd) 
@@ -118,7 +121,8 @@ class GreedyFAS:
         ine = list(self.G.in_edges(node)) # in going edges to node
         oute = list(self.G.out_edges(node)) # out going edges from node
 
-        self.G.remove_node(node) # remove node from networkX graph data structure
+        # self.G.remove_node(node) # remove node from networkX graph data structure
+        self.removed_nodes.add(node)
 
         self.update_neighbours(ine, 1, node) # update buckets for ingoing nodes to node
         self.update_neighbours(oute, -1, node) # update buckets for outgoing nodes to node
@@ -153,13 +157,13 @@ class GreedyFAS:
         n = self.n
 
         # These lines are virtually unnnecesary and should be removed
-        degrees = { k: (v, self.G.out_degree[k]) for k, v in self.G.in_degree }
+        self.degrees = { k: [v, self.G.out_degree[k]] for k, v in self.G.in_degree }
         Vsource = [k for k, v in
-                   degrees.items()  if v[0] == 0 and v[1] > 0]
+                   self.degrees.items()  if v[0] == 0 and v[1] > 0]
         Vd = [(self.scores[k], k) for k, v in
-              degrees.items() if v[0] > 0 and v[1] > 0]
+              self.degrees.items() if v[0] > 0 and v[1] > 0]
         Vsink = [k for k, v in
-                 degrees.items()  if v[0] > 0 and v[1] == 0]
+                 self.degrees.items()  if v[0] > 0 and v[1] == 0]
 
         self.buckets = [[]] * ( 2 * n - 1 )
         mid = n - 1 # n - 1 but -1 for indexing at 0
@@ -180,11 +184,12 @@ class GreedyFAS:
         Implementation of Greedy FAS algorithma according to  Eades et al. (1993)
 
         """
+        print "EHADES", self.n, self.removed_nodes
         self.gen_buckets()
 
         mid = self.n - 1
 
-        while (self.G.number_of_nodes() > 0 ):
+        while ( len(self.removed_nodes) < self.n ):
 
             while self.buckets[-1]:
                 self.remove_ind(-1)
@@ -192,9 +197,10 @@ class GreedyFAS:
             while self.buckets[0]:
                 self.remove_ind(0)
 
-            if (self.G.number_of_nodes() > 0 ):
+            if ( len(self.removed_nodes) < self.n ):
                 self.remove_ind(mid + self.lowest)
-
+        print self.removed_nodes,
+        # exit()
         self.s_left = deque(self.s_left) # debugging purposes (creating derreferenced copy)
         self.s.extend(self.s_right) # construct partial order
 
@@ -202,7 +208,7 @@ class GreedyFAS:
         """
         DFS traversal of the partial 
         """
-
+        print
         if len(self.s) != self.n: # check if partial order has already been constructed
             self.eades()
 
