@@ -17,7 +17,7 @@ from collections import deque
 import math
 
 
-class MinArcFeeedBack:
+class GreedyFAS:
 
     def __init__(self, G, weighted=False, debug=False):
         self.n = G.number_of_nodes()
@@ -65,7 +65,7 @@ class MinArcFeeedBack:
             self.scores[node] = int(math.floor(w_in - w_out))
 
 
-    def update_neighbours(self, neighbours, parity=1):
+    def update_neighbours(self, neighbours, parity=1, node=None):
         """
         Loops over a set of neihbours (either ingoing or outgoing to a node) and
         updates the buckets given these edges (node-neigh) will be rremoved
@@ -86,19 +86,21 @@ class MinArcFeeedBack:
             if nd in self.buckets[0] or nd in self.buckets[-1]: continue # if nd sink or source skip iretration
             
             ind = mid + self.scores[nd] # bucket index for node nd
+
             x = self.buckets[ind].pop(self.buckets[ind].index(nd))
+
             self.scores[nd] += parity
 
             # Check if nd becomes a sink or if it moves to an adjecent bucket
             if  self.G.in_degree(nd) > 0 and  self.G.out_degree(nd) > 0:
                 self.buckets[self.scores[nd] + mid].append(nd)
             else:
-                self.buckets[-1 if parity > 0 else 0] = [nd] 
+                self.buckets[-1 if parity > 0 else 0].append(nd) 
             
             # Track the min in O(1)
             # (if the bucket with the min becomes null it means the min has been moved up by one)
             if not self.buckets[self.lowest + mid]:
-                self.lowest = self.scores[nd] 
+                self.lowest = self.scores[nd]
 
     def update_buckets(self, node):
         """
@@ -116,8 +118,9 @@ class MinArcFeeedBack:
         oute = list(self.G.out_edges(node)) # out going edges from node
 
         self.G.remove_node(node) # remove node from networkX graph data structure
-        self.update_neighbours(ine, 1) # update buckets for ingoing nodes to node
-        self.update_neighbours(oute, -1) # update buckets for outgoing nodes to node
+
+        self.update_neighbours(ine, 1, node) # update buckets for ingoing nodes to node
+        self.update_neighbours(oute, -1, node) # update buckets for outgoing nodes to node
 
     def remove_ind(self, ind):
         """
@@ -132,7 +135,6 @@ class MinArcFeeedBack:
 
         params:
             :param ind[int]: index within self.buckets corresponding to a bucket
-
         output:
             void - this method returns no output it changes the state of the object inplace
         """
@@ -158,11 +160,12 @@ class MinArcFeeedBack:
         Vsink = [k for k, v in
                  degrees.items()  if v[0] > 0 and v[1] == 0]
 
-
         self.buckets = [[]] * ( 2 * n - 1 )
         mid = n - 1 # n - 1 but -1 for indexing at 0
+        print self.G.in_degree('1066'), self.G.out_degree('1066')
 
         for score, node in Vd:
+
             if not self.buckets[mid + score]:
                 self.buckets[mid + score] = []
             self.lowest = min(score, self.lowest)
@@ -170,6 +173,7 @@ class MinArcFeeedBack:
 
         self.buckets[0] = Vsource
         self.buckets[-1] = Vsink
+
 
     def eades(self):
         """
@@ -211,7 +215,7 @@ class MinArcFeeedBack:
             for _, x in self.DAG.out_edges(cur_node):
                 if order[x] < order[cur_node]: # if edge breaks order remove
                     self.DAG.remove_edge(cur_node, x)
-                    print "violator edge: ", (cur_node, x)
+                    print "violator edge: {0}-{1}".format(cur_node, x)
                     continue
                 if x not in visited:
                     q.appendleft(x)
@@ -227,7 +231,8 @@ class MinArcFeeedBack:
         """
         if not G:
             G = self.G
-        print G.edges
+        # print G.edges
+        print nx.find_cycle(G), "found cycles"
         pos = nx.shell_layout(G)
         nx.draw_networkx_nodes(G, pos)
         nx.draw_networkx_labels(G, pos)
@@ -244,7 +249,7 @@ if __name__ == '__main__':
     G.add_edge("D", "E", weight=1.0)
     G.add_edge("C", "B", weight=1.0)
     G.add_edge("D", "C", weight=1.0)
-    af = MinArcFeeedBack(G.copy(), weighted=True, debug=True)
+    af = GreedyFAS(G.copy(), weighted=True, debug=True)
 
     DAG = af.build_dag()
     print af.s, af.s_left, af.s_right
