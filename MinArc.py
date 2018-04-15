@@ -90,7 +90,7 @@ class GreedyFAS:
             
             ind = mid + self.scores[nd] # bucket index for node nd
 
-            x = self.buckets[ind].pop(self.buckets[ind].index(nd))
+            x = self.buckets[ind].remove(nd)
 
             self.scores[nd] += parity
             _deg = 1 if parity >= 0 else 0
@@ -260,7 +260,7 @@ if __name__ == '__main__':
     G.add_edge("D", "E", weight=1.0)
     G.add_edge("C", "B", weight=1.0)
     G.add_edge("D", "C", weight=1.0)
-    af = GreedyFAS(G.copy(), weighted=True, debug=False)
+    af = GreedyFAS(G.copy(), weighted=False, debug=False)
 
     DAG = af.build_dag()
     print af.s, af.s_left, af.s_right
