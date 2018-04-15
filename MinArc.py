@@ -53,8 +53,8 @@ class GreedyFAS:
         Sets up the scores for weighted graphs according to Simpson et al. (2016)
         """
 
-        # normalise weights
-        w_norm = sum([ self.G.get_edge_data(x,y)['weight'] for x, y in self.G.edges])
+        # normalise weights (Its very unclear about a sound statistical way of doing this)
+        w_norm = max([ self.G.get_edge_data(x,y)['weight'] for x, y in self.G.edges])
         for x, y in self.G.edges:
             self.G[x][y]['weight'] /= w_norm # normalising weights
 
@@ -62,7 +62,7 @@ class GreedyFAS:
         for node in self.G.nodes:
             w_in = sum([w['weight'] for x, y, w in self.G.in_edges(node, data=True)])
             w_out = sum([w['weight'] for x, y, w in self.G.out_edges(node, data=True)])
-            print w_in, w_out
+            # print w_in, w_out
             self.scores[node] = int(math.floor(w_in - w_out))
 
 
@@ -163,7 +163,6 @@ class GreedyFAS:
 
         self.buckets = [[]] * ( 2 * n - 1 )
         mid = n - 1 # n - 1 but -1 for indexing at 0
-        print self.G.in_degree('1066'), self.G.out_degree('1066')
 
         for score, node in Vd:
 
@@ -213,21 +212,25 @@ class GreedyFAS:
         visited = set([self.s[0]]) # to not get stuck in cycles
 
         violator_set = []
+        w_norm = sum([ self.DAG.get_edge_data(x,y)['weight'] for x, y in self.DAG.edges])
+        violator_weights = []
         while q:
             cur_node = q.pop()
             for _, x in self.DAG.out_edges(cur_node):
                 if order[x] < order[cur_node]: # if edge breaks order remove
-                    # self.DAG.remove_edge(cur_node, x)
-                    violator_set.append((cur_node, x))
+                    violator_set.append((cur_node, x, self.DAG[cur_node][x]["weight"]))
                     print "violator edge: {0}-{1}".format(cur_node, x)
-                    # continue
                 if x not in visited:
                     q.append(x)
                     visited.add(x)
         
-        for s, t in violator_set:
+        for s, t, w in violator_set:
             self.DAG.remove_edge(s, t)
+            violator_weights.append(w)
 
+        print len(violator_set) * 100.0 / self.n, len(violator_set), self.n
+        print sum(violator_weights) * 100 / w_norm
+        # print nx.minimum_cut(self.DAG, self.s[0], self.s[-1])
         if self.debug: self.draw(self.DAG) # plot resulting DAG (debug)
 
         return self.DAG.copy()
@@ -260,7 +263,7 @@ if __name__ == '__main__':
     G.add_edge("D", "E", weight=1.0)
     G.add_edge("C", "B", weight=1.0)
     G.add_edge("D", "C", weight=1.0)
-    af = GreedyFAS(G.copy(), weighted=True, debug=True)
+    af = GreedyFAS(G.copy(), weighted=True, debug=False)
 
     DAG = af.build_dag()
     print af.s, af.s_left, af.s_right
