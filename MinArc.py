@@ -22,7 +22,6 @@ class GreedyFAS:
     def __init__(self, G, weighted=False, debug=False):
         self.n = G.number_of_nodes()
         self.G = G # NetworkX graph
-        self.DAG = G.copy() # local min arcset solution
         self.scores = {} #  dictionary of delta scores (indices to self.bucket)
         self.s_left = deque()
         self.s_right = deque()
@@ -55,9 +54,11 @@ class GreedyFAS:
         """
 
         # normalise weights (Its very unclear about a sound statistical way of doing this)
-        w_norm = max([ self.G.get_edge_data(x,y)['weight'] for x, y in self.G.edges])
-        for x, y in self.G.edges:
-            self.G[x][y]['weight'] /= w_norm # normalising weights
+        for x in self.G.nodes:
+            wn = sum([self.G[nd][md]["weight"] for nd, md in self.G.in_edges(x)])
+            for y, _ in self.G.in_edges(x):
+                self.G[y][x]['w'] = self.G[y][x]['weight']
+                self.G[y][x]['weight'] /= wn # normalising weights
 
         # sets up scores using difference of w_in vs w_out as per [3] Simpson et al. (2016) 
         for node in self.G.nodes:
@@ -103,7 +104,7 @@ class GreedyFAS:
             
             # Track the min in O(1)
             # (if the bucket with the min becomes null it means the min has been moved up by one)
-            if not self.buckets[self.lowest + mid]:
+            if not self.buckets[self.lowest + mid] or self.scores[nd] < self.lowest:
                 self.lowest = self.scores[nd]
 
     def update_buckets(self, node):
@@ -120,7 +121,6 @@ class GreedyFAS:
         
         ine = list(self.G.in_edges(node)) # in going edges to node
         oute = list(self.G.out_edges(node)) # out going edges from node
-
         self.removed_nodes.add(node) # Mark node as removed
 
         self.update_neighbours(ine, 1, node) # update buckets for ingoing nodes to node
@@ -149,42 +149,35 @@ class GreedyFAS:
                 self.s_left.append(self.buckets[ind][0])
             self.update_buckets(self.buckets[ind].pop(0))
         else:
-            pass # raise BaseException("Bucket %d already removed", ind)
+            raise BaseException("Bucket %d already removed", ind)
 
 
     def gen_buckets(self):
         n = self.n
 
-        # These lines are virtually unnnecesary and should be removed
+        # Degree dict to avoid modifying G on the fly
         self.degrees = { k: [v, self.G.out_degree[k]] for k, v in self.G.in_degree }
-        Vsource = [k for k, v in
-                   self.degrees.items()  if v[0] == 0 and v[1] > 0]
-        Vd = [(self.scores[k], k) for k, v in
-              self.degrees.items() if v[0] > 0 and v[1] > 0]
-        Vsink = [k for k, v in
-                 self.degrees.items()  if v[0] > 0 and v[1] == 0]
 
-        self.buckets = [[]] * ( 2 * n - 1 )
+        self.buckets = [[] for i in  xrange( 2 * n - 1 )]
         mid = n - 1 # n - 1 but -1 for indexing at 0
 
-        for score, node in Vd:
-
-            if not self.buckets[mid + score]:
-                self.buckets[mid + score] = []
-            self.lowest = min(score, self.lowest)
-            self.buckets[mid + score].append(node)
-
-        self.buckets[0] = Vsource
-        self.buckets[-1] = Vsink
+        for node in set(self.G.nodes):
+            if self.degrees[node][0] == 0 and  self.degrees[node][1] > 0:
+                self.buckets[0].append(node) 
+            elif self.degrees[node][1] == 0 and  self.degrees[node][0] > 0:
+                self.buckets[-1].append(node)  
+            else:
+                score = self.scores[node]
+                self.lowest = min(score, self.lowest)
+                self.buckets[mid + score].append(node)
 
 
     def eades(self):
         """
-        Implementation of Greedy FAS algorithma according to  Eades et al. (1993)
+        Implementation of Greedy FAS algorithm according to  Eades et al. (1993)
 
         """
         self.gen_buckets()
-
         mid = self.n - 1
 
         while ( len(self.removed_nodes) < self.n ):
@@ -205,7 +198,7 @@ class GreedyFAS:
         """
         DFS traversal of the partial 
         """
-        print
+        
         if len(self.s) != self.n: # check if partial order has already been constructed
             self.eades()
 
@@ -215,28 +208,33 @@ class GreedyFAS:
         visited = set([self.s[0]]) # to not get stuck in cycles
 
         violator_set = []
-        w_norm = sum([ self.DAG.get_edge_data(x,y)['weight'] for x, y in self.DAG.edges])
+        w_norm = sum([ self.G.get_edge_data(x,y)['weight'] for x, y in self.G.in_edges])
         violator_weights = []
         while q:
             cur_node = q.pop()
-            for _, x in self.DAG.out_edges(cur_node):
+            for _, x in self.G.out_edges(cur_node):
                 if order[x] < order[cur_node]: # if edge breaks order remove
-                    violator_set.append((cur_node, x, self.DAG[cur_node][x]["weight"]))
+                    violator_set.append((cur_node, x, self.G[cur_node][x]["weight"]))
                     print "violator edge: {0}-{1}".format(cur_node, x)
                 if x not in visited:
                     q.append(x)
                     visited.add(x)
         
         for s, t, w in violator_set:
-            self.DAG.remove_edge(s, t)
+            self.G.remove_edge(s, t)
             violator_weights.append(w)
 
         print len(violator_set) * 100.0 / self.n, len(violator_set), self.n
         print sum(violator_weights) * 100 / w_norm
         # print nx.minimum_cut(self.DAG, self.s[0], self.s[-1])
-        if self.debug: self.draw(self.DAG) # plot resulting DAG (debug)
+        if self.debug: self.draw(self.G) # plot resulting DAG (debug)
+        
+        try:
+            print nx.find_cycle(self.G), "Found cycles"
+        except nx.exception.NetworkXNoCycle:
+            print "NO CYCLES FOUND "
 
-        return self.DAG.copy()
+        return self.G.copy()
 
     def draw(self, G = None):
         """
@@ -245,10 +243,6 @@ class GreedyFAS:
         """
         if not G: G = self.G
 
-        try:
-            print nx.find_cycle(G), "found cycles"
-        except nx.exception.NetworkXNoCycle:
-            print "NO CYCLES FOUND "
 
         pos = nx.shell_layout(G)
         nx.draw_networkx_nodes(G, pos)

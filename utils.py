@@ -22,9 +22,9 @@ def csv2graph(csv_name="FASG.csv"):
 def graph2csv(G, csv_name="DAG.csv"):
     with open(csv_name, "wb") as f:
         writer = csv.writer(f)
-        writer.writerow(['source', 'target'])
-        for u, v in G.edges:
-            writer.writerow([u, v])
+        writer.writerow(['source', 'target', 'trade'])
+        for u, v, w in G.edges(data=True):
+            writer.writerow([u, v, w['w']])
 
 def partial2csv(orderings, csv_name="partial.csv"):
     with open(csv_name, "wb") as f:
