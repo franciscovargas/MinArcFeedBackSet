@@ -200,7 +200,7 @@ class GreedyFAS:
 
     def build_dag(self):
         """
-        BFS traversal of the partial 
+        DFS traversal of the partial 
         """
 
         if len(self.s) != self.n: # check if partial order has already been constructed
@@ -210,16 +210,23 @@ class GreedyFAS:
 
         q = deque([self.s[0]])
         visited = set([self.s[0]]) # to not get stuck in cycles
+
+        violator_set = []
         while q:
             cur_node = q.pop()
             for _, x in self.DAG.out_edges(cur_node):
                 if order[x] < order[cur_node]: # if edge breaks order remove
-                    self.DAG.remove_edge(cur_node, x)
+                    # self.DAG.remove_edge(cur_node, x)
+                    violator_set.append((cur_node, x))
                     print "violator edge: {0}-{1}".format(cur_node, x)
-                    continue
+                    # continue
                 if x not in visited:
-                    q.appendleft(x)
+                    q.append(x)
+                    visited.add(x)
         
+        for s, t in violator_set:
+            self.DAG.remove_edge(s, t)
+
         if self.debug: self.draw(self.DAG) # plot resulting DAG (debug)
 
         return self.DAG.copy()
