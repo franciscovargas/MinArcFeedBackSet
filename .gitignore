@@ -1,0 +1,7 @@
+*.csv
+*.txt
+*.pyc
+*.tsv
+*.xls
+*.xlsx
+*.pkl
