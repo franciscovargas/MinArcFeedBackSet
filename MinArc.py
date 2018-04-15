@@ -85,7 +85,7 @@ class GreedyFAS:
         for nd, _ in neighbours:
             nd = nd if parity >= 0 else _ # quick swap
 
-            if nd in self.buckets[0] or nd in self.buckets[-1] or nd in self.removed_nodes: continue # if nd sink or source skip iretration
+            if nd in self.buckets[0] or nd in self.buckets[-1] or nd in self.removed_nodes: continue # if nd sink, source or removed skip iretration
             
             ind = mid + self.scores[nd] # bucket index for node nd
 
@@ -95,7 +95,7 @@ class GreedyFAS:
             _deg = 1 if parity >= 0 else 0
             self.degrees[nd][_deg] -= 1 
 
-            # Check if nd becomes a sink or if it moves to an adjecent bucket
+            # Check if nd becomes a sink/source or if it moves to an adjecent bucket
             if  self.degrees[nd][_deg] > 0 and  self.degrees[nd][_deg] > 0:
                 self.buckets[self.scores[nd] + mid].append(nd)
             else:
@@ -121,8 +121,7 @@ class GreedyFAS:
         ine = list(self.G.in_edges(node)) # in going edges to node
         oute = list(self.G.out_edges(node)) # out going edges from node
 
-        # self.G.remove_node(node) # remove node from networkX graph data structure
-        self.removed_nodes.add(node)
+        self.removed_nodes.add(node) # Mark node as removed
 
         self.update_neighbours(ine, 1, node) # update buckets for ingoing nodes to node
         self.update_neighbours(oute, -1, node) # update buckets for outgoing nodes to node
@@ -184,7 +183,6 @@ class GreedyFAS:
         Implementation of Greedy FAS algorithma according to  Eades et al. (1993)
 
         """
-        print "EHADES", self.n, self.removed_nodes
         self.gen_buckets()
 
         mid = self.n - 1
@@ -199,8 +197,7 @@ class GreedyFAS:
 
             if ( len(self.removed_nodes) < self.n ):
                 self.remove_ind(mid + self.lowest)
-        print self.removed_nodes,
-        # exit()
+
         self.s_left = deque(self.s_left) # debugging purposes (creating derreferenced copy)
         self.s.extend(self.s_right) # construct partial order
 
