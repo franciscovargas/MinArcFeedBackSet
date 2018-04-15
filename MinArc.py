@@ -62,6 +62,7 @@ class GreedyFAS:
         for node in self.G.nodes:
             w_in = sum([w['weight'] for x, y, w in self.G.in_edges(node, data=True)])
             w_out = sum([w['weight'] for x, y, w in self.G.out_edges(node, data=True)])
+            print w_in, w_out
             self.scores[node] = int(math.floor(w_in - w_out))
 
 
@@ -236,10 +237,13 @@ class GreedyFAS:
         Plots a networkX graph G defaults to self.G if
         G is None. (Used for debugging purposes)
         """
-        if not G:
-            G = self.G
-        # print G.edges
-        print nx.find_cycle(G), "found cycles"
+        if not G: G = self.G
+
+        try:
+            print nx.find_cycle(G), "found cycles"
+        except nx.exception.NetworkXNoCycle:
+            print "NO CYCLES FOUND "
+
         pos = nx.shell_layout(G)
         nx.draw_networkx_nodes(G, pos)
         nx.draw_networkx_labels(G, pos)
