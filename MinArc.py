@@ -176,6 +176,9 @@ class GreedyFAS:
         """
         Implementation of Greedy FAS algorithm according to  Eades et al. (1993)
 
+        Only difference is that it removes the minimum ranked node and not the maximum
+        as per Tintelnot, F. et al. (2017)
+
         """
         self.gen_buckets()
         mid = self.n - 1
@@ -196,7 +199,7 @@ class GreedyFAS:
 
     def build_dag(self):
         """
-        DFS traversal of the partial 
+        DFS traversal of the ordering resulting from GR-FAS (eades) 
         """
         
         if len(self.s) != self.n: # check if partial order has already been constructed
@@ -224,13 +227,17 @@ class GreedyFAS:
             self.G.remove_edge(s, t)
             violator_weights.append(w)
 
-        print len(violator_set) * 100.0 / self.n, len(violator_set), self.n
-        print sum(violator_weights) * 100 / w_norm
-        # print nx.minimum_cut(self.DAG, self.s[0], self.s[-1])
+        print( "% of removed edges: {0}, " +
+               "number of removed edges {1}, " +
+               "total number of edges: {2}").format(len(violator_set) * 100.0 / self.n,
+                                                    len(violator_set),
+                                                    self.n)
+        print "% of weight \"mass\" removed: {0}".format(sum(violator_weights) * 100 / w_norm)
+
         if self.debug: self.draw(self.G) # plot resulting DAG (debug)
         
         try:
-            print nx.find_cycle(self.G), "Found cycles"
+            print nx.find_cycle(self.G), "ERROR !!!! Found cycles"
         except nx.exception.NetworkXNoCycle:
             print "NO CYCLES FOUND "
 
