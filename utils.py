@@ -10,7 +10,7 @@ def csv2graph(csv_name="FASG.csv"):
     This function converts a csv with format:
 
     target, source, timestamp, share, ...
-    v,      u,        t ,      w 
+    v,      u,        t ,      w
 
     into a networkX graph
     """
@@ -28,7 +28,7 @@ def csv2graph(csv_name="FASG.csv"):
             else:
                 G[u][v]['weight'] += float(w)
 
-    return G 
+    return G
 
 
 def graph2csv(G, csv_name="DAG"):
@@ -68,7 +68,7 @@ def csv2Dag(input_file, output_name):
 
     fs = GreedyFAS(G, weighted=True, debug=False)
     DAG = fs.build_dag()
-    
+
     graph2csv(DAG, output_name)
     partial2csv(fs.s, output_name)
 
