@@ -52,13 +52,13 @@ class GreedyFAS:
         """
         Sets up the scores for weighted graphs according to Simpson et al. (2016)
         """
-
         # normalise weights (Its very unclear about a sound statistical way of doing this)
         for x in self.G.nodes:
             wn = sum([self.G[nd][md]["weight"] for nd, md in self.G.in_edges(x)])
             for y, _ in self.G.in_edges(x):
                 self.G[y][x]['w'] = float(self.G[y][x]['weight'])
                 self.G[y][x]['weight'] /= wn # normalising weights
+                # print((y ,x) , self.G[y][x]['weight'])
 
         # sets up scores using difference of w_in vs w_out as per [3] Simpson et al. (2016)
         for node in self.G.nodes:
@@ -215,10 +215,15 @@ class GreedyFAS:
         violator_weights = []
         while q:
             cur_node = q.pop()
-            for _, x in self.G.out_edges(cur_node):
+            in_edges = [(x,y) for y,x in self.G.in_edges(cur_node)]
+            edges = list(self.G.out_edges(cur_node)) + in_edges
+            for _, x in edges:
                 if order[x] < order[cur_node]: # if edge breaks order remove
-                    violator_set.append((cur_node, x, self.G[cur_node][x]["weight"]))
-                    print "violator edge: {0}-{1}".format(cur_node, x)
+                    try:
+                        violator_set.append((cur_node, x, self.G[cur_node][x]["weight"]))
+                        print "violator edge: {0}-{1}".format(cur_node, x)
+                    except KeyError:
+                        pass
                 if x not in visited:
                     q.append(x)
                     visited.add(x)
@@ -239,6 +244,7 @@ class GreedyFAS:
 
         try:
             print nx.find_cycle(self.G), "ERROR !!!! Found cycles"
+            print self.s, self.s_left, self.s_right
         except nx.exception.NetworkXNoCycle:
             print "NO CYCLES FOUND "
 
@@ -268,7 +274,7 @@ if __name__ == '__main__':
     G.add_edge("D", "E", weight=1.0)
     G.add_edge("C", "B", weight=1.0)
     G.add_edge("D", "C", weight=1.0)
-    af = GreedyFAS(G.copy(), weighted=False, debug=False)
+    af = GreedyFAS(G.copy(), weighted=True, debug=True)
 
     DAG = af.build_dag()
     print af.s, af.s_left, af.s_right
