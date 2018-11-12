@@ -57,10 +57,10 @@ class GreedyFAS:
         for x in self.G.nodes:
             wn = sum([self.G[nd][md]["weight"] for nd, md in self.G.in_edges(x)])
             for y, _ in self.G.in_edges(x):
-                self.G[y][x]['w'] = self.G[y][x]['weight']
+                self.G[y][x]['w'] = float(self.G[y][x]['weight'])
                 self.G[y][x]['weight'] /= wn # normalising weights
 
-        # sets up scores using difference of w_in vs w_out as per [3] Simpson et al. (2016) 
+        # sets up scores using difference of w_in vs w_out as per [3] Simpson et al. (2016)
         for node in self.G.nodes:
             w_in = sum([w['weight'] for x, y, w in self.G.in_edges(node, data=True)])
             w_out = sum([w['weight'] for x, y, w in self.G.out_edges(node, data=True)])
@@ -77,31 +77,31 @@ class GreedyFAS:
             :param neighbours[list(str/int)]: list of nodes which have just lost a common neighbour
             :param parity [int]: positive indicates ingoing edges , negative outgoing
         output:
-            void - this method returns nothing since it changes the state of the object inplace 
+            void - this method returns nothing since it changes the state of the object inplace
         """
 
         parity = -1 if parity < 0 else 1 # normalise parity
-        mid = self.n - 1 # 
+        mid = self.n - 1 #
 
         for nd, _ in neighbours:
             nd = nd if parity >= 0 else _ # quick swap
 
             if nd in self.buckets[0] or nd in self.buckets[-1] or nd in self.removed_nodes: continue # if nd sink, source or removed skip iretration
-            
+
             ind = mid + self.scores[nd] # bucket index for node nd
 
             x = self.buckets[ind].remove(nd)
 
             self.scores[nd] += parity
             _deg = 1 if parity >= 0 else 0
-            self.degrees[nd][_deg] -= 1 
+            self.degrees[nd][_deg] -= 1
 
             # Check if nd becomes a sink/source or if it moves to an adjecent bucket
             if  self.degrees[nd][_deg] > 0 and  self.degrees[nd][_deg] > 0:
                 self.buckets[self.scores[nd] + mid].append(nd)
             else:
-                self.buckets[-1 if parity > 0 else 0].append(nd) 
-            
+                self.buckets[-1 if parity > 0 else 0].append(nd)
+
             # Track the min in O(1)
             # (if the bucket with the min becomes null it means the min has been moved up by one)
             if not self.buckets[self.lowest + mid] or self.scores[nd] < self.lowest:
@@ -118,7 +118,7 @@ class GreedyFAS:
             void - this method works inplace
         """
         mid = self.n - 1
-        
+
         ine = list(self.G.in_edges(node)) # in going edges to node
         oute = list(self.G.out_edges(node)) # out going edges from node
         self.removed_nodes.add(node) # Mark node as removed
@@ -128,7 +128,7 @@ class GreedyFAS:
 
     def remove_ind(self, ind):
         """
-        Coordinates the removal of the top element at 
+        Coordinates the removal of the top element at
         particular index ind in  a bucket (which corresponds to removing a node):
 
         1. It appends node to s_left or s_right accordingly
@@ -163,9 +163,9 @@ class GreedyFAS:
 
         for node in set(self.G.nodes):
             if self.degrees[node][0] == 0 and  self.degrees[node][1] > 0:
-                self.buckets[0].append(node) 
+                self.buckets[0].append(node)
             elif self.degrees[node][1] == 0 and  self.degrees[node][0] > 0:
-                self.buckets[-1].append(node)  
+                self.buckets[-1].append(node)
             else:
                 score = self.scores[node]
                 self.lowest = min(score, self.lowest)
@@ -199,9 +199,9 @@ class GreedyFAS:
 
     def build_dag(self):
         """
-        DFS traversal of the ordering resulting from GR-FAS (eades) 
+        DFS traversal of the ordering resulting from GR-FAS (eades)
         """
-        
+
         if len(self.s) != self.n: # check if partial order has already been constructed
             self.eades()
 
@@ -222,7 +222,7 @@ class GreedyFAS:
                 if x not in visited:
                     q.append(x)
                     visited.add(x)
-        
+
         for s, t, w in violator_set:
             self.G.remove_edge(s, t)
             violator_weights.append(w)
@@ -233,9 +233,10 @@ class GreedyFAS:
                                                     len(violator_set),
                                                     self.n)
         print "% of weight \"mass\" removed: {0}".format(sum(violator_weights) * 100 / w_norm)
+        print "violator set : {}".format(violator_set)
 
         if self.debug: self.draw(self.G) # plot resulting DAG (debug)
-        
+
         try:
             print nx.find_cycle(self.G), "ERROR !!!! Found cycles"
         except nx.exception.NetworkXNoCycle:
@@ -259,7 +260,7 @@ class GreedyFAS:
 
 
 if __name__ == '__main__':
-    
+
     # Test/Demo usage
     G = nx.DiGraph()
     G.add_edge("A", "B", weight=1.0)
